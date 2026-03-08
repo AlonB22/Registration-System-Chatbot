@@ -43,7 +43,11 @@ export default function LoginScreen() {
 
           <View
             style={[styles.inputShell, focusedField === 'email' && styles.inputShellFocused]}>
-            <Feather name="mail" size={18} color="#909090" />
+            <Image
+              source={require('@/assets/images/email-icon.svg')}
+              style={styles.inputLeadingIcon}
+              contentFit="contain"
+            />
             <TextInput
               value={email}
               onChangeText={setEmail}
@@ -60,7 +64,11 @@ export default function LoginScreen() {
 
           <View
             style={[styles.inputShell, focusedField === 'password' && styles.inputShellFocused]}>
-            <Feather name="lock" size={18} color="#909090" />
+            <Image
+              source={require('@/assets/images/lock-icon.svg')}
+              style={styles.inputLeadingIcon}
+              contentFit="contain"
+            />
             <TextInput
               value={password}
               onChangeText={setPassword}
@@ -161,7 +169,7 @@ const styles = StyleSheet.create({
     marginBottom: 34,
     alignSelf: 'center',
     color: '#3949AB',
-    fontFamily: 'Lato',
+    fontFamily: 'Lato_700Bold',
     fontSize: 20,
     fontWeight: '600',
     lineHeight: 24,
@@ -194,9 +202,16 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    color: '#707070',
-    fontSize: 15,
-    lineHeight: 20,
+    color: '#828282',
+    fontSize: 14,
+    fontWeight: '400',
+    lineHeight: 100,
+    fontFamily: 'Lato_400Regular',
+    verticalAlign: 'middle',
+  },
+  inputLeadingIcon: {
+    width: 24,
+    height: 24,
   },
   forgotButton: {
     minWidth: 110,
@@ -206,7 +221,7 @@ const styles = StyleSheet.create({
   },
   forgotText: {
     color: '#3949AB',
-    fontFamily: 'Lato',
+    fontFamily: 'Lato_700Bold',
     fontSize: 14,
     fontWeight: '600',
     lineHeight: 17,
@@ -227,6 +242,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '500',
+    fontFamily: 'Lato_700Bold',
   },
   dividerRow: {
     marginTop: 12,
@@ -245,6 +261,7 @@ const styles = StyleSheet.create({
     color: '#767676',
     fontSize: 17,
     fontWeight: '500',
+    fontFamily: 'Lato_700Bold',
   },
   socialRow: {
     flexDirection: 'row',
@@ -267,6 +284,7 @@ const styles = StyleSheet.create({
     color: '#5065C0',
     fontSize: 18,
     fontWeight: '500',
+    fontFamily: 'Lato_700Bold',
   },
   googleLogoIcon: {
     width: 20,
@@ -276,8 +294,12 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginBottom: 18,
     color: '#808080',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
+    fontFamily: 'Lato_700Bold',
+    lineHeight: 14,
+    letterSpacing: 0,
+    textAlignVertical: 'center',
   },
   registerButton: {
     width: 300,
@@ -293,5 +315,6 @@ const styles = StyleSheet.create({
     color: '#5065C0',
     fontSize: 18,
     fontWeight: '500',
+    fontFamily: 'Lato_700Bold',
   },
 });
