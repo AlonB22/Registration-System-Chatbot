@@ -96,6 +96,7 @@ function App() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isRegistering, setIsRegistering] = useState(false)
+  const [isLoggingIn, setIsLoggingIn] = useState(false)
   const [toast, setToast] = useState(null)
   const isLoginDisabled = email.trim() === '' || password.trim() === ''
   const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'
@@ -113,17 +114,69 @@ function App() {
     return () => clearTimeout(timeoutId)
   }, [toast])
 
-  async function getToastMessage() {
+  async function getToastMessage(mode = 'registration') {
+    const endpoint =
+      mode === 'login' ? '/api/login-toast' : '/api/registration-toast'
+    const fallback =
+      mode === 'login' ? 'Welcome back.' : 'Registration complete.'
+
     try {
-      const response = await fetch(`${toastServerUrl}/api/registration-toast`)
+      const response = await fetch(`${toastServerUrl}${endpoint}`)
       if (!response.ok) {
         throw new Error('Toast server request failed')
       }
 
       const payload = await response.json()
-      return payload?.message || 'Registration complete.'
+      return payload?.message || fallback
     } catch (error) {
-      return 'Registration complete.'
+      return fallback
+    }
+  }
+
+  async function handleLogin() {
+    if (isLoggingIn) {
+      return
+    }
+
+    if (isLoginDisabled) {
+      setToast({
+        type: 'error',
+        message: 'Please enter email and password.',
+      })
+      return
+    }
+
+    setIsLoggingIn(true)
+
+    try {
+      const response = await fetch(`${backendUrl}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
+
+      if (response.status === 404) {
+        setToast({
+          type: 'error',
+          message: 'User not found. Please register to log in.',
+        })
+        return
+      }
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null)
+        throw new Error(payload?.error || 'Login failed.')
+      }
+
+      const message = await getToastMessage('login')
+      setToast({ type: 'success', message })
+    } catch (error) {
+      setToast({
+        type: 'error',
+        message: error?.message || 'Login failed.',
+      })
+    } finally {
+      setIsLoggingIn(false)
     }
   }
 
@@ -154,7 +207,7 @@ function App() {
         throw new Error(payload?.error || 'Registration failed.')
       }
 
-      const message = await getToastMessage()
+      const message = await getToastMessage('registration')
       setToast({ type: 'success', message })
     } catch (error) {
       setToast({
@@ -195,7 +248,13 @@ function App() {
             <img className="auth-logo-s" src={logoS} alt="" />
           </div>
           <h1 className="auth-title">Log in</h1>
-          <form className="auth-form" onSubmit={(event) => event.preventDefault()}>
+          <form
+            className="auth-form"
+            onSubmit={(event) => {
+              event.preventDefault()
+              handleLogin()
+            }}
+          >
             <div className="input-shell">
               <span className="input-icon">
                 <img src={emailIcon} alt="" aria-hidden="true" className="field-icon-img" />
@@ -240,7 +299,7 @@ function App() {
               Forgot password?
             </button>
 
-            <button type="submit" className="primary-action" disabled={isLoginDisabled}>
+            <button type="submit" className="primary-action" disabled={isLoginDisabled || isLoggingIn}>
               Log in
             </button>
 

@@ -40,6 +40,34 @@ def register():
         print(f"Error during registration: {e}")
         return jsonify({"error": str(e)}), 500
 
+@app.route('/login', methods=['POST'])
+def login():
+    try:
+        data = request.json
+
+        if not data:
+            return jsonify({"error": "No data sent"}), 400
+
+        email = data.get("email", "").strip()
+        password = data.get("password", "")
+
+        if not email or not password:
+            return jsonify({"error": "Email and password are required"}), 400
+
+        user = users_collection.find_one({"email": email, "password": password})
+
+        if not user:
+            return jsonify({"error": "User not found. Please register to log in."}), 404
+
+        return jsonify({
+            "message": "Login successful",
+            "id": str(user["_id"])
+        }), 200
+
+    except Exception as e:
+        print(f"Error during login: {e}")
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == '__main__':
     port = int(os.getenv("PORT", 5000))
     app.run(debug=True, port=port)

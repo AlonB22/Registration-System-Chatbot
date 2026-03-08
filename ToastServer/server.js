@@ -9,7 +9,7 @@ app.use(cors());
 app.use(express.json());
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4.1-mini';
+const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4.1-nano';
 const PORT = Number(process.env.PORT || 3001);
 
 const fallbackMessages = [
@@ -20,9 +20,18 @@ const fallbackMessages = [
   'Registered successfully. Welcome.',
 ];
 
-function randomFallback() {
-  const index = Math.floor(Math.random() * fallbackMessages.length);
-  return fallbackMessages[index];
+const loginFallbackMessages = [
+  'Welcome back. Glad to see you again.',
+  'You are logged in. Welcome back.',
+  'Good to have you back.',
+  'Welcome back. You are all set.',
+  'Signed in successfully. Welcome back.',
+];
+
+function randomFallback(kind = 'register') {
+  const source = kind === 'login' ? loginFallbackMessages : fallbackMessages;
+  const index = Math.floor(Math.random() * source.length);
+  return source[index];
 }
 
 function extractTextFromResponse(payload) {
@@ -49,9 +58,26 @@ function extractTextFromResponse(payload) {
   return '';
 }
 
-async function generateToastMessage() {
+function getPrompt(kind) {
+  if (kind === 'login') {
+    return {
+      system:
+        'You write one short toast message for successful login of an existing user. Return plain text only. Max 12 words.',
+      user: 'Generate a random positive welcome-back toast now.',
+    };
+  }
+
+  return {
+    system:
+      'You write one short toast message for successful user registration. Return plain text only. Max 12 words.',
+    user: 'Generate a random positive registration toast now.',
+  };
+}
+
+async function generateToastMessage(kind = 'register') {
+  const prompt = getPrompt(kind);
   if (!OPENAI_API_KEY) {
-    return randomFallback();
+    return randomFallback(kind);
   }
 
   const response = await fetch('https://api.openai.com/v1/responses', {
@@ -67,12 +93,11 @@ async function generateToastMessage() {
       input: [
         {
           role: 'system',
-          content:
-            'You write one short toast message for successful user registration. Return plain text only. Max 12 words.',
+          content: prompt.system,
         },
         {
           role: 'user',
-          content: 'Generate a random positive registration toast now.',
+          content: prompt.user,
         },
       ],
     }),
@@ -87,7 +112,7 @@ async function generateToastMessage() {
   const message = extractTextFromResponse(payload);
 
   if (!message) {
-    throw new Error('OpenAI response did not contain toast text.');
+    throw new Error('OpenAI response did not contain toast text');
   }
 
   return message;
@@ -99,11 +124,21 @@ app.get('/health', (_req, res) => {
 
 app.get('/api/registration-toast', async (_req, res) => {
   try {
-    const message = await generateToastMessage();
+    const message = await generateToastMessage('register');
     res.json({ message });
   } catch (error) {
     console.error('Toast generation failed:', error);
-    res.status(200).json({ message: randomFallback() });
+    res.status(200).json({ message: randomFallback('register') });
+  }
+});
+
+app.get('/api/login-toast', async (_req, res) => {
+  try {
+    const message = await generateToastMessage('login');
+    res.json({ message });
+  } catch (error) {
+    console.error('Login toast generation failed:', error);
+    res.status(200).json({ message: randomFallback('login') });
   }
 });
 
