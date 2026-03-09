@@ -323,7 +323,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F6F6F6',
+    backgroundColor: '#FFFFFF',
   },
   keyboardRoot: {
     flex: 1,
@@ -374,9 +374,9 @@ const styles = StyleSheet.create({
     width: 300,
     height: 40,
     borderWidth: 1,
-    borderColor: '#CFCFCF',
+    borderColor: '#D0D0D0',
     borderRadius: 10,
-    backgroundColor: '#F6F6F6',
+    backgroundColor: '#ffffff',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -447,10 +447,10 @@ const styles = StyleSheet.create({
   dividerLine: {
     width: 83.5,
     height: 1,
-    backgroundColor: '#E0E3F0',
+    backgroundColor: '#E6E9FA',
   },
   dividerText: {
-    color: '#767676',
+    color: '#828282',
     fontSize: 14,
     fontWeight: '400',
     fontFamily: 'Lato_700Bold',
@@ -466,14 +466,14 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
     borderColor: '#3949AB',
-    backgroundColor: '#F6F6F6',
+    backgroundColor: '#ffffff',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
   },
   socialButtonText: {
-    color: '#5065C0',
+    color: '#3949AB',
     fontSize: 14,
     fontWeight: '400',
     fontFamily: 'Lato_700Bold',
@@ -485,7 +485,7 @@ const styles = StyleSheet.create({
   footerCopy: {
     alignSelf: 'center',
     marginBottom: 18,
-    color: '#808080',
+    color: '#7B7B7B',
     fontSize: 14,
     fontWeight: '600',
     fontFamily: 'Lato_700Bold',
@@ -499,7 +499,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
     borderColor: '#3949AB',
-    backgroundColor: '#F6F6F6',
+    backgroundColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -507,9 +507,9 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   registerButtonText: {
-    color: '#5065C0',
-    fontSize: 18,
-    fontWeight: '500',
+    color: '#3949AB',
+    fontSize: 14,
+    fontWeight: '400',
     fontFamily: 'Lato_700Bold',
   },
 });

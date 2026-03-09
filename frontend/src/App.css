@@ -176,7 +176,7 @@
 }
 
 .auth-title {
-  margin: 0 0 28px;
+  margin: 0 0 65px;
   text-align: center;
   color: #4a56a8;
   font-size: 20px;
@@ -284,7 +284,7 @@
 }
 
 .primary-action {
-  margin-top: 2px;
+  margin-top: 10px;
   width: 358px;
   height: 40px;
   padding: 0;
@@ -308,19 +308,22 @@
 .or-divider {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
   margin: 2px 0;
-  color: #b3b8d3;
-  font-size: 12px;
-  font-weight: 700;
+  color: #7B7B7B;
+  font-size: 14px;
+  font-weight: 400;
 }
 
 .or-divider::before,
 .or-divider::after {
   content: '';
-  flex: 1;
+  flex: 0 0 93.5px;
+  width: 93.5px;
   height: 1px;
   background: #d9ddee;
+  opacity: 1;
 }
 
 .social-actions {
@@ -362,7 +365,7 @@
 }
 
 .auth-footer {
-  margin-top: 6px;
+  margin-top: 8px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -370,9 +373,9 @@
 }
 
 .auth-footer p {
-  margin: 0;
-  color: #9ca2c6;
-  font-size: 12px;
+  margin: 0px;
+  color: #7B7B7B;
+  font-size: 14px;
   font-weight: 600;
 }
 
@@ -393,6 +396,7 @@
   border-radius: 40px;
   box-sizing: border-box;
   opacity: 1;
+  margin-top: 6px;
 }
 
 .register-link:hover {
