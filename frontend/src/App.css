@@ -38,6 +38,114 @@
   background: #b3261e;
 }
 
+.register-modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(22, 31, 82, 0.52);
+  z-index: 1100;
+  padding: 18px;
+}
+
+.register-modal {
+  width: min(440px, 100%);
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 24px 44px rgba(26, 36, 91, 0.34);
+  padding: 20px;
+}
+
+.register-modal h2 {
+  margin: 0 0 14px;
+  color: #3949ab;
+  font-size: 22px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.register-modal form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.register-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.register-field > span {
+  color: #2f3150;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.register-field > input {
+  height: 40px;
+  border: 1px solid #d0d0d0;
+  border-radius: 8px;
+  padding: 0 12px;
+  font-size: 14px;
+  color: #2f3150;
+  outline: none;
+}
+
+.register-field > input:focus {
+  border: 1px solid #5769d4;
+  box-shadow: 0 0 0 3px #5769d44d;
+}
+
+.register-field small {
+  color: #b3261e;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.register-modal-actions {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.register-cancel,
+.register-submit {
+  height: 40px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.register-cancel {
+  border: 1px solid #3949ab;
+  background: #ffffff;
+  color: #3949ab;
+}
+
+.register-cancel:hover {
+  background: #f0f0f0;
+}
+
+.register-submit {
+  border: 0;
+  background: #3949ab;
+  color: #ffffff;
+}
+
+.register-submit:hover {
+  background: #27368f;
+}
+
+.register-cancel:disabled,
+.register-submit:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 .auth-card {
   width: 1218px;
   height: 743px;

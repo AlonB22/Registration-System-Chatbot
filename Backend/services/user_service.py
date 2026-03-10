@@ -1,6 +1,6 @@
 import os
 import re
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import requests
 from requests import RequestException
@@ -8,12 +8,17 @@ from requests import RequestException
 from database import get_database_error, get_users_collection, is_database_ready
 
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+NAME_PATTERN = re.compile(r"^[A-Za-z][A-Za-z' -]{1,49}$")
 DEFAULT_REGISTER_TOAST = "Registration complete. Welcome aboard."
 DEFAULT_LOGIN_TOAST = "Welcome back."
 USER_NOT_FOUND_MESSAGE = "User not found. Please register to log in."
 
 
-def _validate_auth_payload(payload: Dict[str, Any] | None) -> Tuple[bool, Dict[str, Any]]:
+def _normalize_name(raw_value: Any) -> str:
+    return " ".join(str(raw_value or "").strip().split())
+
+
+def _validate_login_payload(payload: Optional[Dict[str, Any]]) -> Tuple[bool, Dict[str, Any]]:
     if not payload:
         return False, {"error": "No data sent", "status_code": 400}
 
@@ -27,6 +32,30 @@ def _validate_auth_payload(payload: Dict[str, Any] | None) -> Tuple[bool, Dict[s
         return False, {"error": "Invalid email format", "status_code": 400}
 
     return True, {"email": email, "password": password}
+
+
+def _validate_registration_payload(payload: Optional[Dict[str, Any]]) -> Tuple[bool, Dict[str, Any]]:
+    is_valid, result = _validate_login_payload(payload)
+    if not is_valid:
+        return False, result
+
+    first_name = _normalize_name(
+        payload.get("first_name") or payload.get("firstName")
+    )
+    last_name = _normalize_name(payload.get("last_name") or payload.get("lastName"))
+
+    if not first_name or not last_name:
+        return False, {"error": "First name and last name are required", "status_code": 400}
+
+    if not NAME_PATTERN.match(first_name):
+        return False, {"error": "Invalid first name format", "status_code": 400}
+
+    if not NAME_PATTERN.match(last_name):
+        return False, {"error": "Invalid last name format", "status_code": 400}
+
+    result["first_name"] = first_name
+    result["last_name"] = last_name
+    return True, result
 
 
 def _fetch_toast_message(endpoint_path: str, fallback_message: str) -> str:
@@ -54,7 +83,7 @@ def _fetch_login_toast_message() -> str:
     return _fetch_toast_message("/api/login-toast", DEFAULT_LOGIN_TOAST)
 
 
-def register_user(payload: Dict[str, Any] | None) -> Dict[str, Any]:
+def register_user(payload: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     if not is_database_ready():
         return {
             "success": False,
@@ -62,7 +91,7 @@ def register_user(payload: Dict[str, Any] | None) -> Dict[str, Any]:
             "error": f"Database is not connected. {get_database_error()}",
         }
 
-    is_valid, result = _validate_auth_payload(payload)
+    is_valid, result = _validate_registration_payload(payload)
     if not is_valid:
         return {
             "success": False,
@@ -96,6 +125,8 @@ def register_user(payload: Dict[str, Any] | None) -> Dict[str, Any]:
 
         insert_result = users_collection.insert_one(
             {
+                "first_name": result["first_name"],
+                "last_name": result["last_name"],
                 "email": result["email"],
                 "password": password,
             }
@@ -118,7 +149,7 @@ def register_user(payload: Dict[str, Any] | None) -> Dict[str, Any]:
         }
 
 
-def login_user(payload: Dict[str, Any] | None) -> Dict[str, Any]:
+def login_user(payload: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     if not is_database_ready():
         return {
             "success": False,
@@ -126,7 +157,7 @@ def login_user(payload: Dict[str, Any] | None) -> Dict[str, Any]:
             "error": f"Database is not connected. {get_database_error()}",
         }
 
-    is_valid, result = _validate_auth_payload(payload)
+    is_valid, result = _validate_login_payload(payload)
     if not is_valid:
         return {
             "success": False,

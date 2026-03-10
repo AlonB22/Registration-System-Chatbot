@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
-from database import get_database_error, init_database, is_database_ready
+from database import get_database_error, is_database_ready
 from services.user_service import login_user, register_user
 
 load_dotenv()
@@ -20,10 +20,6 @@ def parse_allowed_origins():
 
 
 CORS(app, resources={r"/*": {"origins": parse_allowed_origins()}})
-
-# Initialize once on startup, but failures won't crash the app.
-init_database(os.getenv("MONGO_URI"))
-
 
 @app.get("/health")
 def health():

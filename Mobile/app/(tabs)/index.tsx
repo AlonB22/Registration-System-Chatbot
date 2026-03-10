@@ -44,6 +44,13 @@ function InputShell({
   return <View style={[style, isFocused && focusedStyle]}>{children}</View>;
 }
 
+const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+const NAME_PATTERN = /^[A-Za-z][A-Za-z' -]{1,49}$/;
+
+function normalizeName(value: string): string {
+  return value.trim().replace(/\s+/g, ' ');
+}
+
 function resolveExpoHost(): string | null {
   const hostUri =
     Constants.expoConfig?.hostUri ??
@@ -90,12 +97,18 @@ function normalizeBaseUrl(rawUrl: string | undefined, defaultPort: number): stri
 }
 
 export default function LoginScreen() {
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [focusedField, setFocusedField] = useState<'email' | 'password' | null>(null);
+  const [focusedField, setFocusedField] = useState<
+    'firstName' | 'lastName' | 'email' | 'password' | null
+  >(null);
   const [isRegistering, setIsRegistering] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const firstNameInputRef = useRef<RNTextInput>(null);
+  const lastNameInputRef = useRef<RNTextInput>(null);
   const emailInputRef = useRef<RNTextInput>(null);
   const passwordInputRef = useRef<RNTextInput>(null);
 
@@ -167,8 +180,33 @@ export default function LoginScreen() {
       return;
     }
 
-    if (isLoginDisabled) {
-      showToast('Please enter email and password before registering.');
+    const normalizedFirstName = normalizeName(firstName);
+    const normalizedLastName = normalizeName(lastName);
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedPassword = password.trim();
+
+    if (!normalizedFirstName || !normalizedLastName) {
+      showToast('Please enter first name and last name.');
+      return;
+    }
+
+    if (!NAME_PATTERN.test(normalizedFirstName)) {
+      showToast('First name format is invalid.');
+      return;
+    }
+
+    if (!NAME_PATTERN.test(normalizedLastName)) {
+      showToast('Last name format is invalid.');
+      return;
+    }
+
+    if (!EMAIL_PATTERN.test(normalizedEmail)) {
+      showToast('Please enter a valid email address.');
+      return;
+    }
+
+    if (normalizedPassword.length < 6) {
+      showToast('Password must be at least 6 characters.');
       return;
     }
 
@@ -178,7 +216,12 @@ export default function LoginScreen() {
       const response = await fetch(`${backendUrl}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({
+          first_name: normalizedFirstName,
+          last_name: normalizedLastName,
+          email: normalizedEmail,
+          password: normalizedPassword,
+        }),
       });
 
       if (!response.ok) {
@@ -215,6 +258,44 @@ export default function LoginScreen() {
           </View>
 
           <Text style={styles.title}>Log in</Text>
+
+          <InputShell
+            onFocusPress={() => firstNameInputRef.current?.focus()}
+            isFocused={focusedField === 'firstName'}
+            style={styles.inputShell}
+            focusedStyle={styles.inputShellFocused}>
+            <TextInput
+              ref={firstNameInputRef}
+              value={firstName}
+              onChangeText={setFirstName}
+              onFocus={() => setFocusedField('firstName')}
+              onBlur={() => setFocusedField(null)}
+              placeholder="First name"
+              placeholderTextColor="#858585"
+              autoCapitalize="words"
+              autoCorrect={false}
+              style={styles.input}
+            />
+          </InputShell>
+
+          <InputShell
+            onFocusPress={() => lastNameInputRef.current?.focus()}
+            isFocused={focusedField === 'lastName'}
+            style={styles.inputShell}
+            focusedStyle={styles.inputShellFocused}>
+            <TextInput
+              ref={lastNameInputRef}
+              value={lastName}
+              onChangeText={setLastName}
+              onFocus={() => setFocusedField('lastName')}
+              onBlur={() => setFocusedField(null)}
+              placeholder="Last name"
+              placeholderTextColor="#858585"
+              autoCapitalize="words"
+              autoCorrect={false}
+              style={styles.input}
+            />
+          </InputShell>
 
           <InputShell
             onFocusPress={() => emailInputRef.current?.focus()}

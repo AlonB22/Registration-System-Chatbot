@@ -10,6 +10,8 @@ const USER_NOT_FOUND_TOAST = {
   type: 'error',
   message: 'User not found. Please register to log in.',
 }
+const NAME_PATTERN = /^[A-Za-z][A-Za-z\s'-]{1,49}$/
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function EyeIcon({ isOpen }) {
   if (isOpen) {
@@ -102,6 +104,14 @@ function App() {
   const [password, setPassword] = useState('')
   const [isRegistering, setIsRegistering] = useState(false)
   const [isLoggingIn, setIsLoggingIn] = useState(false)
+  const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false)
+  const [registerForm, setRegisterForm] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    password: '',
+  })
+  const [registerErrors, setRegisterErrors] = useState({})
   const [toast, setToast] = useState(null)
   const isLoginDisabled = email.trim() === '' || password.trim() === ''
   const backendUrl =
@@ -119,6 +129,80 @@ function App() {
 
     return () => clearTimeout(timeoutId)
   }, [toast])
+
+  useEffect(() => {
+    if (!isRegisterModalOpen) {
+      return
+    }
+
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape' && !isRegistering) {
+        setIsRegisterModalOpen(false)
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [isRegisterModalOpen, isRegistering])
+
+  function normalizeName(value) {
+    return value.trim().replace(/\s+/g, ' ')
+  }
+
+  function validateRegistration(values) {
+    const errors = {}
+
+    if (!NAME_PATTERN.test(values.firstName)) {
+      errors.firstName =
+        'First name must be 2-50 letters and can include spaces, apostrophes, or hyphens.'
+    }
+
+    if (!NAME_PATTERN.test(values.lastName)) {
+      errors.lastName =
+        'Last name must be 2-50 letters and can include spaces, apostrophes, or hyphens.'
+    }
+
+    if (!EMAIL_PATTERN.test(values.email)) {
+      errors.email = 'Please enter a valid email address.'
+    }
+
+    if (values.password.length < 6) {
+      errors.password = 'Password must be at least 6 characters.'
+    }
+
+    return errors
+  }
+
+  function openRegisterModal() {
+    setRegisterErrors({})
+    setRegisterForm({
+      firstName: '',
+      lastName: '',
+      email: email.trim(),
+      password,
+    })
+    setIsRegisterModalOpen(true)
+  }
+
+  function closeRegisterModal() {
+    if (isRegistering) {
+      return
+    }
+    setIsRegisterModalOpen(false)
+    setRegisterErrors({})
+  }
+
+  function updateRegisterField(field, value) {
+    setRegisterForm((current) => ({ ...current, [field]: value }))
+    setRegisterErrors((current) => {
+      if (!current[field]) {
+        return current
+      }
+      const next = { ...current }
+      delete next[field]
+      return next
+    })
+  }
 
   async function handleLogin() {
     if (isLoggingIn) {
@@ -171,16 +255,23 @@ function App() {
     }
   }
 
-  async function handleRegister() {
+  async function handleRegister(event) {
+    event.preventDefault()
+
     if (isRegistering) {
       return
     }
 
-    if (isLoginDisabled) {
-      setToast({
-        type: 'error',
-        message: 'Please enter email and password before registering.',
-      })
+    const normalizedValues = {
+      firstName: normalizeName(registerForm.firstName),
+      lastName: normalizeName(registerForm.lastName),
+      email: registerForm.email.trim().toLowerCase(),
+      password: registerForm.password.trim(),
+    }
+
+    const clientErrors = validateRegistration(normalizedValues)
+    if (Object.keys(clientErrors).length > 0) {
+      setRegisterErrors(clientErrors)
       return
     }
 
@@ -190,7 +281,12 @@ function App() {
       const response = await fetch(`${backendUrl}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({
+          first_name: normalizedValues.firstName,
+          last_name: normalizedValues.lastName,
+          email: normalizedValues.email,
+          password: normalizedValues.password,
+        }),
       })
       const payload = await response.json().catch(() => null)
 
@@ -199,6 +295,10 @@ function App() {
       }
 
       const message = payload?.toast || payload?.message || 'Registration complete.'
+      setEmail(normalizedValues.email)
+      setPassword(normalizedValues.password)
+      setIsRegisterModalOpen(false)
+      setRegisterErrors({})
       setToast({ type: 'success', message })
     } catch (error) {
       setToast({
@@ -215,6 +315,93 @@ function App() {
       {toast && (
         <div className={`app-toast app-toast-${toast.type}`} role="status" aria-live="polite">
           {toast.message}
+        </div>
+      )}
+      {isRegisterModalOpen && (
+        <div
+          className="register-modal-overlay"
+          role="presentation"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              closeRegisterModal()
+            }
+          }}
+        >
+          <section className="register-modal" role="dialog" aria-modal="true" aria-labelledby="register-title">
+            <h2 id="register-title">Create Account</h2>
+            <form onSubmit={handleRegister} noValidate>
+              <label className="register-field">
+                <span>First name</span>
+                <input
+                  type="text"
+                  value={registerForm.firstName}
+                  onChange={(event) => updateRegisterField('firstName', event.target.value)}
+                  autoComplete="given-name"
+                  placeholder="First name"
+                  required
+                />
+                {registerErrors.firstName && <small>{registerErrors.firstName}</small>}
+              </label>
+
+              <label className="register-field">
+                <span>Last name</span>
+                <input
+                  type="text"
+                  value={registerForm.lastName}
+                  onChange={(event) => updateRegisterField('lastName', event.target.value)}
+                  autoComplete="family-name"
+                  placeholder="Last name"
+                  required
+                />
+                {registerErrors.lastName && <small>{registerErrors.lastName}</small>}
+              </label>
+
+              <label className="register-field">
+                <span>Email</span>
+                <div className="input-shell">
+                  <span className="input-icon">
+                    <img src={emailIcon} alt="" aria-hidden="true" className="field-icon-img" />
+                  </span>
+                  <input
+                    type="email"
+                    value={registerForm.email}
+                    onChange={(event) => updateRegisterField('email', event.target.value)}
+                    autoComplete="email"
+                    placeholder="Email"
+                    required
+                  />
+                </div>
+                {registerErrors.email && <small>{registerErrors.email}</small>}
+              </label>
+
+              <label className="register-field">
+                <span>Password</span>
+                <div className="input-shell">
+                  <span className="input-icon">
+                    <img src={lockIcon} alt="" aria-hidden="true" className="field-icon-img" />
+                  </span>
+                  <input
+                    type="password"
+                    value={registerForm.password}
+                    onChange={(event) => updateRegisterField('password', event.target.value)}
+                    autoComplete="new-password"
+                    placeholder="Password"
+                    required
+                  />
+                </div>
+                {registerErrors.password && <small>{registerErrors.password}</small>}
+              </label>
+
+              <div className="register-modal-actions">
+                <button type="button" className="register-cancel" onClick={closeRegisterModal} disabled={isRegistering}>
+                  Cancel
+                </button>
+                <button type="submit" className="register-submit" disabled={isRegistering}>
+                  {isRegistering ? 'Registering...' : 'Register'}
+                </button>
+              </div>
+            </form>
+          </section>
         </div>
       )}
 
@@ -314,10 +501,10 @@ function App() {
               <button
                 type="button"
                 className="register-link"
-                onClick={handleRegister}
-                disabled={isRegistering || isLoginDisabled}
+                onClick={openRegisterModal}
+                disabled={isRegistering}
               >
-                {isRegistering ? 'Registering...' : 'Register'}
+                Register
               </button>
             </div>
           </form>
