@@ -22,7 +22,7 @@ def parse_allowed_origins():
 CORS(app, resources={r"/*": {"origins": parse_allowed_origins()}})
 
 # Initialize once on startup, but failures won't crash the app.
-init_database()
+init_database(os.getenv("MONGO_URI"))
 
 
 @app.get("/health")

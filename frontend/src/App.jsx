@@ -104,8 +104,8 @@ function App() {
   const [isLoggingIn, setIsLoggingIn] = useState(false)
   const [toast, setToast] = useState(null)
   const isLoginDisabled = email.trim() === '' || password.trim() === ''
-  const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'
-  const toastServerUrl = import.meta.env.VITE_TOAST_SERVER_URL || 'http://localhost:3001'
+  const backendUrl =
+    import.meta.env.VITE_BACKEND_URL || 'https://regsys-backend-alonb.azurewebsites.net'
   const showUserNotFoundToast = () => setToast({ ...USER_NOT_FOUND_TOAST })
 
   useEffect(() => {
@@ -119,25 +119,6 @@ function App() {
 
     return () => clearTimeout(timeoutId)
   }, [toast])
-
-  async function getToastMessage(mode = 'registration') {
-    const endpoint =
-      mode === 'login' ? '/api/login-toast' : '/api/registration-toast'
-    const fallback =
-      mode === 'login' ? 'Welcome back.' : 'Registration complete.'
-
-    try {
-      const response = await fetch(`${toastServerUrl}${endpoint}`)
-      if (!response.ok) {
-        throw new Error('Toast server request failed')
-      }
-
-      const payload = await response.json()
-      return payload?.message || fallback
-    } catch (error) {
-      return fallback
-    }
-  }
 
   async function handleLogin() {
     if (isLoggingIn) {
@@ -160,9 +141,9 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       })
+      const payload = await response.json().catch(() => null)
 
       if (!response.ok) {
-        const payload = await response.json().catch(() => null)
         const apiError = payload?.error || ''
 
         if (response.status === 404 || /user not found/i.test(apiError)) {
@@ -173,7 +154,7 @@ function App() {
         throw new Error(apiError || 'Login failed.')
       }
 
-      const message = await getToastMessage('login')
+      const message = payload?.toast || payload?.message || 'Login successful.'
       setToast({ type: 'success', message })
     } catch (error) {
       if (/user not found/i.test(error?.message || '')) {
@@ -211,13 +192,13 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       })
+      const payload = await response.json().catch(() => null)
 
       if (!response.ok) {
-        const payload = await response.json().catch(() => null)
         throw new Error(payload?.error || 'Registration failed.')
       }
 
-      const message = await getToastMessage('registration')
+      const message = payload?.toast || payload?.message || 'Registration complete.'
       setToast({ type: 'success', message })
     } catch (error) {
       setToast({
@@ -334,9 +315,9 @@ function App() {
                 type="button"
                 className="register-link"
                 onClick={handleRegister}
-                disabled={isRegistering}
+                disabled={isRegistering || isLoginDisabled}
               >
-                Register
+                {isRegistering ? 'Registering...' : 'Register'}
               </button>
             </div>
           </form>

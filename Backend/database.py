@@ -14,11 +14,11 @@ _users_collection: Optional[Collection] = None
 _last_connection_error: Optional[str] = None
 
 
-def init_database() -> bool:
+def init_database(mongo_uri: Optional[str] = None) -> bool:
     global _client, _db, _users_collection, _last_connection_error
 
-    mongo_uri = os.getenv("MONGO_URI")
-    if not mongo_uri:
+    resolved_mongo_uri = mongo_uri or os.getenv("MONGO_URI")
+    if not resolved_mongo_uri:
         _last_connection_error = "MONGO_URI is missing."
         _client = None
         _db = None
@@ -26,7 +26,7 @@ def init_database() -> bool:
         return False
 
     try:
-        client = MongoClient(mongo_uri, serverSelectionTimeoutMS=5000)
+        client = MongoClient(resolved_mongo_uri, serverSelectionTimeoutMS=5000)
         client.admin.command("ping")
 
         _client = client
@@ -62,4 +62,3 @@ def get_database_error() -> str:
     if _users_collection is None and _last_connection_error is None:
         init_database()
     return _last_connection_error or "Database connection is not available."
-
