@@ -6,3 +6,14 @@ ToastServer/.env
 frontend/.env
 Backend/.env
 Mobile/.env
+
+# Local deployment artifacts
+backend.zip
+toastserver.zip
+
+# Downloaded Azure log artifacts
+backend_app_logs.zip
+backend_app_logs_after_startup.zip
+backend_app_logs/
+backend_app_logs_2/
+backend_app_logs_after_startup/
