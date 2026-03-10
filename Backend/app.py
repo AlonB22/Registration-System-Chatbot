@@ -5,6 +5,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 
 from database import get_database_error, is_database_ready
+from services.chat_service import generate_chat_reply
 from services.user_service import login_user, register_user
 
 load_dotenv()
@@ -45,6 +46,16 @@ def register():
 @app.post("/login")
 def login():
     service_result = login_user(request.get_json(silent=True))
+
+    if service_result["success"]:
+        return jsonify(service_result["data"]), service_result["status_code"]
+
+    return jsonify({"error": service_result["error"]}), service_result["status_code"]
+
+
+@app.post("/chat")
+def chat():
+    service_result = generate_chat_reply(request.get_json(silent=True))
 
     if service_result["success"]:
         return jsonify(service_result["data"]), service_result["status_code"]

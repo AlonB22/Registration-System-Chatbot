@@ -188,6 +188,9 @@ def login_user(payload: Optional[Dict[str, Any]]) -> Dict[str, Any]:
             "data": {
                 "message": "Login successful",
                 "id": str(user["_id"]),
+                "first_name": _normalize_name(user.get("first_name")),
+                "last_name": _normalize_name(user.get("last_name")),
+                "email": str(user.get("email", result["email"])).strip().lower(),
                 "toast": _fetch_login_toast_message(),
             },
         }

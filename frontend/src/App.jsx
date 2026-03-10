@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import './App.css'
 import authIllustration from './assets/auth-illustration.png'
 import logoSquare from './assets/square.svg'
@@ -12,6 +12,12 @@ const USER_NOT_FOUND_TOAST = {
 }
 const NAME_PATTERN = /^[A-Za-z][A-Za-z\s'-]{1,49}$/
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const CHAT_SUGGESTIONS = [
+  'מה סטטוס החבילה שלי? מספר המעקב שלי הוא 12345.',
+  'אשמח להצעת מחיר למשלוחים יומיים בתל אביב.',
+  'איך אפשר לתאם איסוף מהיר למחר בבוקר?',
+  'יש לכם חבילה משתלמת לעסק ששולח הרבה?',
+]
 
 function EyeIcon({ isOpen }) {
   if (isOpen) {
@@ -99,6 +105,7 @@ function FacebookIcon() {
 }
 
 function App() {
+  const [activeScreen, setActiveScreen] = useState('auth')
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -113,7 +120,17 @@ function App() {
   })
   const [registerErrors, setRegisterErrors] = useState({})
   const [toast, setToast] = useState(null)
+  const [chatProfile, setChatProfile] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+  })
+  const [chatMessages, setChatMessages] = useState([])
+  const [chatInput, setChatInput] = useState('')
+  const [isChatLoading, setIsChatLoading] = useState(false)
+  const chatBottomRef = useRef(null)
   const isLoginDisabled = email.trim() === '' || password.trim() === ''
+  const isChatSendDisabled = chatInput.trim() === '' || isChatLoading
   const backendUrl =
     import.meta.env.VITE_BACKEND_URL || 'https://regsys-backend-alonb.azurewebsites.net'
   const showUserNotFoundToast = () => setToast({ ...USER_NOT_FOUND_TOAST })
@@ -144,6 +161,14 @@ function App() {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [isRegisterModalOpen, isRegistering])
+
+  useEffect(() => {
+    if (activeScreen !== 'chat') {
+      return
+    }
+
+    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [activeScreen, chatMessages, isChatLoading])
 
   function normalizeName(value) {
     return value.trim().replace(/\s+/g, ' ')
@@ -204,6 +229,96 @@ function App() {
     })
   }
 
+  function buildChatHistory(messages) {
+    return messages
+      .filter(
+        (message) =>
+          message && (message.role === 'user' || message.role === 'assistant') && message.content
+      )
+      .map((message) => ({
+        role: message.role,
+        content: String(message.content),
+      }))
+  }
+
+  function createChatMessage(role, content) {
+    return {
+      id: `${role}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      role,
+      content,
+    }
+  }
+
+  async function sendChatMessage(rawMessage) {
+    if (isChatLoading) {
+      return
+    }
+
+    const trimmedMessage = rawMessage.trim()
+    if (!trimmedMessage) {
+      return
+    }
+
+    const historySnapshot = buildChatHistory(chatMessages)
+    const userMessage = createChatMessage('user', trimmedMessage)
+    setChatMessages((current) => [...current, userMessage])
+    setChatInput('')
+    setIsChatLoading(true)
+
+    try {
+      const response = await fetch(`${backendUrl}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: trimmedMessage,
+          history: historySnapshot,
+          user: {
+            first_name: chatProfile.firstName,
+            last_name: chatProfile.lastName,
+            email: chatProfile.email,
+          },
+        }),
+      })
+
+      const payload = await response.json().catch(() => null)
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Chat request failed.')
+      }
+
+      const assistantReply =
+        String(payload?.reply || '').trim() || 'I could not generate a response right now.'
+      setChatMessages((current) => [...current, createChatMessage('assistant', assistantReply)])
+    } catch (error) {
+      setChatMessages((current) => [
+        ...current,
+        createChatMessage(
+          'assistant',
+          error?.message || 'I could not reach the AI service. Please try again.'
+        ),
+      ])
+    } finally {
+      setIsChatLoading(false)
+    }
+  }
+
+  function handleChatSubmit(event) {
+    event.preventDefault()
+    void sendChatMessage(chatInput)
+  }
+
+  function handleSuggestionClick(promptText) {
+    void sendChatMessage(promptText)
+  }
+
+  function exitChatScreen() {
+    if (isChatLoading) {
+      return
+    }
+    setActiveScreen('auth')
+    setChatInput('')
+    setChatMessages([])
+  }
+
   async function handleLogin() {
     if (isLoggingIn) {
       return
@@ -239,6 +354,14 @@ function App() {
       }
 
       const message = payload?.toast || payload?.message || 'Login successful.'
+      setChatProfile({
+        firstName: normalizeName(payload?.first_name || payload?.firstName || ''),
+        lastName: normalizeName(payload?.last_name || payload?.lastName || ''),
+        email: String(payload?.email || email).trim().toLowerCase(),
+      })
+      setChatMessages([])
+      setChatInput('')
+      setActiveScreen('chat')
       setToast({ type: 'success', message })
     } catch (error) {
       if (/user not found/i.test(error?.message || '')) {
@@ -299,6 +422,14 @@ function App() {
       setPassword(normalizedValues.password)
       setIsRegisterModalOpen(false)
       setRegisterErrors({})
+      setChatProfile({
+        firstName: normalizedValues.firstName,
+        lastName: normalizedValues.lastName,
+        email: normalizedValues.email,
+      })
+      setChatMessages([])
+      setChatInput('')
+      setActiveScreen('chat')
       setToast({ type: 'success', message })
     } catch (error) {
       setToast({
@@ -308,6 +439,90 @@ function App() {
     } finally {
       setIsRegistering(false)
     }
+  }
+
+  if (activeScreen === 'chat') {
+    return (
+      <main className="chat-page" dir="rtl" lang="he">
+        {toast && (
+          <div className={`app-toast app-toast-${toast.type}`} role="status" aria-live="polite">
+            {toast.message}
+          </div>
+        )}
+
+        <header className="chat-topbar">
+          <div className="chat-brand-block">
+            <strong>העוזר של A.B Deliveries</strong>
+            <span>שירות ומכירות</span>
+          </div>
+          <div className="chat-user-pill">
+            {chatProfile.firstName ? `שלום ${chatProfile.firstName}` : chatProfile.email || 'משתמש חדש'}
+          </div>
+          <button type="button" className="chat-exit-button" onClick={exitChatScreen} disabled={isChatLoading}>
+            חזרה להתחברות
+          </button>
+        </header>
+
+        <section className="chat-main">
+          {chatMessages.length === 0 ? (
+            <div className="chat-empty-state">
+              <h1>איך אפשר לעזור לך היום?</h1>
+              <p>אני כאן לסטטוס חבילות, שירות לקוחות ותמיכה בהזמנת משלוחים נוספים.</p>
+              <div className="chat-suggestions">
+                {CHAT_SUGGESTIONS.map((prompt) => (
+                  <button
+                    key={prompt}
+                    type="button"
+                    className="chat-suggestion-btn"
+                    onClick={() => handleSuggestionClick(prompt)}
+                    disabled={isChatLoading}
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="chat-thread">
+              {chatMessages.map((message) => (
+                <article
+                  key={message.id}
+                  className={`chat-message chat-message-${message.role}`}
+                >
+                  <div className={`chat-bubble chat-bubble-${message.role}`}>{message.content}</div>
+                </article>
+              ))}
+              {isChatLoading && (
+                <article className="chat-message chat-message-assistant">
+                  <div className="chat-bubble chat-bubble-assistant chat-bubble-loading">
+                    חושב...
+                  </div>
+                </article>
+              )}
+              <div ref={chatBottomRef} />
+            </div>
+          )}
+        </section>
+
+        <form className="chat-composer" onSubmit={handleChatSubmit}>
+          <textarea
+            value={chatInput}
+            onChange={(event) => setChatInput(event.target.value)}
+            placeholder="כתוב כאן הודעה..."
+            rows={1}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault()
+                void sendChatMessage(chatInput)
+              }
+            }}
+          />
+          <button type="submit" className="chat-send-btn" disabled={isChatSendDisabled}>
+            שלח
+          </button>
+        </form>
+      </main>
+    )
   }
 
   return (
