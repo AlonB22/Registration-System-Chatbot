@@ -16,13 +16,11 @@ Full-stack registration project with:
 - Toast health: `https://regsys-toast-alonb.azurewebsites.net/health`
 
 ## Demo Videos
-These are web and mobile app videos for demonstration:
-- Web app demo: [frontend/public/web_app.mp4](./frontend/public/web_app.mp4)
-- Mobile app demo: [frontend/public/mobile_app.mp4](./frontend/public/mobile_app.mp4)
+These are web and mobile app videos for demonstration.
 
-<video src="./frontend/public/web_app.mp4" controls width="900"></video>
-<video src="https://raw.githubusercontent.com/AlonB22/Registration-System-Chatbot/main/frontend/public/web_app.mp4" controls width="600"></video>
-<video src="./frontend/public/mobile_app.mp4" controls width="420"></video>
+GitHub may not preview larger `.mp4` files inline. Use these direct links:
+- Web app demo (download/open): [web_app.mp4](https://github.com/AlonB22/Registration-System-Chatbot/blob/main/frontend/public/web_app.mp4?raw=1)
+- Mobile app demo (download/open): [mobile_app.mp4](https://github.com/AlonB22/Registration-System-Chatbot/blob/main/frontend/public/mobile_app.mp4?raw=1)
 
 ## Quick Verification (No Local Backend Needed)
 
@@ -51,6 +49,65 @@ Expected behavior:
 - registration with names returns `201`
 - login returns `200`
 - responses include a `toast` string
+
+## Watch Chat Log File Changes (Azure Excel)
+
+The chatbot writes conversation rows to:
+- `/home/site/wwwroot/AB_Deliveries_Chatbot_Logs.xlsx`
+
+Use these PowerShell commands to watch changes with your own eyes:
+
+### 1) Set variables and Kudu auth
+```powershell
+$rg  = "rg-regsys"
+$app = "regsys-backend-alonb"
+
+$pub = az webapp deployment list-publishing-credentials -g $rg -n $app | ConvertFrom-Json
+$pair = "$($pub.publishingUserName):$($pub.publishingPassword)"
+$basic = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($pair))
+$headers = @{ Authorization = "Basic $basic" }
+```
+
+### 2) Trigger a new chat row (with unique marker)
+```powershell
+$tag = "E2E-" + (Get-Date -Format "yyyyMMddHHmmss")
+$body = @{
+  message = "בדיקת לוג $tag. הטלפון שלי 0501234567. מספר מעקב AB12CD34EF"
+  history = @()
+  user = @{ first_name = "Alon"; last_name = "Ben"; email = "alon@test.com" }
+} | ConvertTo-Json -Depth 6
+
+(Invoke-WebRequest -UseBasicParsing "https://$app.azurewebsites.net/chat" -Method POST -ContentType "application/json" -Body $body).Content
+$tag
+```
+
+### 3) Check file metadata (size + modified time)
+```powershell
+Invoke-RestMethod -Uri "https://$app.scm.azurewebsites.net/api/vfs/site/wwwroot/" -Headers $headers |
+  Where-Object { $_.name -eq "AB_Deliveries_Chatbot_Logs.xlsx" } |
+  Select-Object name, size, mtime
+```
+
+### 4) Download and open the file
+```powershell
+Invoke-WebRequest -Uri "https://$app.scm.azurewebsites.net/api/vfs/site/wwwroot/AB_Deliveries_Chatbot_Logs.xlsx" `
+  -Headers $headers `
+  -OutFile ".\AB_Deliveries_Chatbot_Logs_from_Azure.xlsx"
+
+Start-Process ".\AB_Deliveries_Chatbot_Logs_from_Azure.xlsx"
+```
+
+### 5) Optional: watch continuously (every 10 seconds)
+```powershell
+while ($true) {
+  Invoke-RestMethod -Uri "https://$app.scm.azurewebsites.net/api/vfs/site/wwwroot/" -Headers $headers |
+    Where-Object { $_.name -eq "AB_Deliveries_Chatbot_Logs.xlsx" } |
+    Select-Object name, size, mtime
+  Start-Sleep -Seconds 10
+}
+```
+
+If you get `404`, send one `/chat` message first, then check again.
 
 ## What To Review In Code
 - Backend API routes: `Backend/app.py`
