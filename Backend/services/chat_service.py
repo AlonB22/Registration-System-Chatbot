@@ -1,5 +1,7 @@
 import os
 import re
+import logging
+import hashlib
 from datetime import datetime
 from pathlib import Path
 from threading import Lock
@@ -17,7 +19,26 @@ PHONE_PATTERNS = [
     re.compile(r"(?<!\d)(?:\+972[-\s]?|0)?5\d[-\s]?\d{7}(?!\d)"),
     re.compile(r"(?<!\d)\d{7,15}(?!\d)"),
 ]
+TRACKING_NUMBER_PATTERN = re.compile(r"(?<![A-Za-z0-9])[A-Za-z0-9]{10}(?![A-Za-z0-9])")
+TRACKING_STATUS_KEYWORDS = (
+    "סטטוס",
+    "מעקב",
+    "משלוח",
+    "חבילה",
+    "tracking",
+    "status",
+    "package",
+    "shipment",
+)
+SIMULATED_TRACKING_STATUSES = [
+    "החבילה עדיין לא שויכה לנהג ונמצאת בהכנה למשלוח.",
+    "החבילה נאספה מהשולח והיא בתהליך מיון.",
+    "החבילה נמצאת בדרך לנקודת היעד.",
+    "החבילה הגיעה לאזור החלוקה וממתינה למסירה סופית.",
+    "החבילה נמסרה בהצלחה לנמען.",
+]
 _LOG_WRITE_LOCK = Lock()
+LOGGER = logging.getLogger(__name__)
 
 
 def _normalize_text(raw_value: Any) -> str:
@@ -25,8 +46,17 @@ def _normalize_text(raw_value: Any) -> str:
 
 
 def _resolve_chat_log_path() -> Path:
-    project_root = Path(__file__).resolve().parents[2]
-    return project_root / "ToastServer" / CHAT_LOG_FILE_NAME
+    configured_path = _normalize_text(os.getenv("CHAT_LOG_FILE_PATH"))
+    if configured_path:
+        return Path(configured_path).expanduser().resolve()
+
+    search_roots = [Path.cwd(), Path(__file__).resolve().parents[2]]
+    for root in search_roots:
+        toast_dir = root / "ToastServer"
+        if toast_dir.exists():
+            return toast_dir / CHAT_LOG_FILE_NAME
+
+    return Path(__file__).resolve().parents[2] / "ToastServer" / CHAT_LOG_FILE_NAME
 
 
 def _normalize_history(raw_history: Any) -> List[Dict[str, str]]:
@@ -154,9 +184,36 @@ def _log_chat_conversation(
         caller_name = _build_caller_name(user_payload)
         phone_number = _extract_phone_number(user_payload, details)
         _append_chat_log_row(caller_name, phone_number, details)
-    except Exception:
+    except Exception as error:
         # Logging failure must not block chat flow.
-        pass
+        LOGGER.exception("Failed to write chat log row: %s", error)
+
+
+def _is_tracking_status_request(message: str) -> bool:
+    lowered_message = message.lower()
+    return any(keyword in lowered_message for keyword in TRACKING_STATUS_KEYWORDS)
+
+
+def _extract_tracking_number(message: str) -> str:
+    match = TRACKING_NUMBER_PATTERN.search(message)
+    if not match:
+        return ""
+    return match.group(0).upper()
+
+
+def _build_tracking_status_reply(
+    tracking_number: str,
+    first_name: str,
+) -> str:
+    digest = hashlib.sha256(tracking_number.encode("utf-8")).hexdigest()
+    status_index = int(digest[:8], 16) % len(SIMULATED_TRACKING_STATUSES)
+    status_text = SIMULATED_TRACKING_STATUSES[status_index]
+    greeting = f"{first_name}, " if first_name else ""
+    upsell = "אם תרצה, אפשר גם לתאם עבורך משלוחים נוספים במחיר משתלם לעסקים."
+    return (
+        f"{greeting}סטטוס משלוח עבור מספר מעקב {tracking_number}: {status_text}\n"
+        f"{upsell}"
+    )
 
 
 def _build_system_prompt(user_payload: Optional[Dict[str, Any]]) -> str:
@@ -173,9 +230,10 @@ def _build_system_prompt(user_payload: Optional[Dict[str, Any]]) -> str:
         "- שמור על ניסוח ברור, ידידותי ומקצועי.\n"
         "- השתמש בפורמט שמתאים ל-RTL (משפטים קצרים, רשימות קצרות כשצריך).\n\n"
         "כללי שירות:\n"
-        "- כשמבקשים סטטוס חבילה, בקש פרטים מזהים חסרים בצורה ממוקדת (למשל מספר מעקב/מספר הזמנה/טלפון).\n"
+        "- כשמבקשים סטטוס חבילה, מספר המעקב חייב להיות באורך 10 תווים (אותיות/מספרים).\n"
+        "- אם אין מספר מעקב תקין, הסבר זאת במפורש ובקש מספר מעקב של 10 תווים.\n"
         "- אם אין מספיק מידע, הסבר מה חסר ובקש את המינימום הנדרש להמשך.\n"
-        "- אל תמציא סטטוס משלוח שלא נמסר במפורש.\n\n"
+        "- סטטוס המשלוח הוא סימולציה פנימית; ספק סטטוס אפשרי באופן בטוח ואחיד.\n\n"
         "כללי מכירה:\n"
         "- בכל תשובה נסה להוסיף הצעה קצרה ורלוונטית להזמנה נוספת או לשדרוג שירות משלוחים.\n"
         "- הדגש ערך עסקי: חיסכון בזמן, אמינות, איסוף מהיר, ושירות לעסקים.\n"
@@ -199,6 +257,33 @@ def generate_chat_reply(payload: Optional[Dict[str, Any]]) -> Dict[str, Any]:
         return {"success": False, "status_code": 400, "error": "Message is required"}
 
     history = _normalize_history(payload.get("history"))
+    user_payload = payload.get("user") if isinstance(payload, dict) else {}
+    first_name = _normalize_text(
+        (user_payload or {}).get("first_name") or (user_payload or {}).get("firstName")
+    )
+
+    if _is_tracking_status_request(message):
+        tracking_number = _extract_tracking_number(message)
+        if not tracking_number:
+            assistant_message = (
+                "כדי לבדוק סטטוס משלוח, צריך מספר מעקב באורך 10 תווים "
+                "(אותיות/מספרים), למשל: AB12CD34EF."
+            )
+            _log_chat_conversation(payload, history, message, assistant_message=assistant_message)
+            return {
+                "success": True,
+                "status_code": 200,
+                "data": {"reply": assistant_message},
+            }
+
+        assistant_message = _build_tracking_status_reply(tracking_number, first_name)
+        _log_chat_conversation(payload, history, message, assistant_message=assistant_message)
+        return {
+            "success": True,
+            "status_code": 200,
+            "data": {"reply": assistant_message},
+        }
+
     api_key = _normalize_text(os.getenv("OPENAI_API_KEY"))
     if not api_key:
         error_message = "OpenAI is not configured on the server."

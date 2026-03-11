@@ -13,7 +13,7 @@ const USER_NOT_FOUND_TOAST = {
 const NAME_PATTERN = /^[A-Za-z][A-Za-z\s'-]{1,49}$/
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const CHAT_SUGGESTIONS = [
-  'מה סטטוס החבילה שלי? מספר המעקב שלי הוא 12345.',
+  'מה סטטוס החבילה שלי?',
   'אשמח להצעת מחיר למשלוחים יומיים בתל אביב.',
   'איך אפשר לתאם איסוף מהיר למחר בבוקר?',
   'יש לכם חבילה משתלמת לעסק ששולח הרבה?',
@@ -468,6 +468,7 @@ function App() {
             <div className="chat-empty-state">
               <h1>איך אפשר לעזור לך היום?</h1>
               <p>אני כאן לסטטוס חבילות, שירות לקוחות ותמיכה בהזמנת משלוחים נוספים.</p>
+              <p className="chat-note">שימו לב: מספר מעקב תקין חייב להכיל 10 תווים.</p>
               <div className="chat-suggestions">
                 {CHAT_SUGGESTIONS.map((prompt) => (
                   <button

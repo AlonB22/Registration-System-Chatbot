@@ -623,6 +623,12 @@
   font-size: 16px;
 }
 
+.chat-note {
+  color: #3949ab !important;
+  font-size: 14px !important;
+  font-weight: 700;
+}
+
 .chat-suggestions {
   margin-top: 14px;
   width: min(880px, 100%);
