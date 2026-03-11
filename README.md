@@ -18,9 +18,11 @@ Full-stack registration project with:
 ## Demo Videos
 These are web and mobile app videos for demonstration.
 
-GitHub may not preview larger `.mp4` files inline. Use these direct links:
-- Web app demo (download/open): [web_app.mp4](https://github.com/AlonB22/Registration-System-Chatbot/blob/main/frontend/public/web_app.mp4?raw=1)
-- Mobile app demo (download/open): [mobile_app.mp4](https://github.com/AlonB22/Registration-System-Chatbot/blob/main/frontend/public/mobile_app.mp4?raw=1)
+GitHub may fail to preview larger `.mp4` files inline. Use these direct raw links:
+- Web app demo (download/open): [web_app.mp4](https://raw.githubusercontent.com/AlonB22/Registration-System-Chatbot/main/frontend/public/web_app.mp4)
+- Mobile app demo (download/open): [mobile_app.mp4](https://raw.githubusercontent.com/AlonB22/Registration-System-Chatbot/main/frontend/public/mobile_app.mp4)
+
+If a browser does not auto-download, right-click the link and choose `Save link as...`.
 
 ## Quick Verification (No Local Backend Needed)
 
